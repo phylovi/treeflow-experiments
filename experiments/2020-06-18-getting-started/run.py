@@ -4,6 +4,7 @@
 # # Tensorflow Probability & Treeflow Demo
 # Author: Christiaan Swanepoel
 
+import click
 import numpy as np
 import pandas as pd
 import tensorflow as tf
@@ -14,6 +15,7 @@ import treeflow.sequences
 import treeflow.tree_processing
 import treeflow.model
 from treeflow.coalescent import ConstantCoalescent
+
 tfd = tfp.distributions
 
 DATA_ROOT = "../../data/"
@@ -68,9 +70,20 @@ log_posterior = lambda **z: (prior.log_prob(z) + wrapped_likelihood(z))
 log_posterior(**q.sample())
 
 
-# tf.profiler.experimental.start('logdir')
-loss = tfp.vi.fit_surrogate_posterior(
-    log_posterior, q, tf.optimizers.Adam(learning_rate=0.0001), 50
-)
-# tf.profiler.experimental.stop()
+TRIAL_COUNT = 10
+USE_TF_PROFILER = False
+
+if USE_TF_PROFILER:
+    tf.profiler.experimental.start('logdir')
+
+with click.progressbar(range(TRIAL_COUNT), label="Trials") as bar:
+    for _ in bar:
+        q_tmp = q.copy()
+        loss = tfp.vi.fit_surrogate_posterior(
+            log_posterior, q_tmp, tf.optimizers.Adam(learning_rate=0.0001), 5
+        )
+
+if USE_TF_PROFILER:
+    tf.profiler.experimental.stop()
+
 pd.Series(loss).to_csv("loss.csv", header=False, index=False)
