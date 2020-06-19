@@ -21,8 +21,6 @@ tfd = tfp.distributions
 DATA_ROOT = "../../data/"
 NEWICK_FILE = DATA_ROOT + "wnv/wnv_seed_6.nwk"
 FASTA_FILE = DATA_ROOT + "wnv/wnv.fasta"
-# @Christiaan I assume that your convention regarding NT order is the same as
-# that of BEAST.
 FREQUENCIES = (
     np.array(
         [
@@ -79,7 +77,7 @@ def build_q_and_log_posterior(use_libsbn):
         likelihood, instance = treeflow.sequences.log_prob_conditioned_branch_only(
             value,
             topology,
-            category_count=4,
+            category_count=1,
             subst_model=subst_model,
             category_weights=tf.convert_to_tensor([1.0], dtype=tf.float32),
             category_rates=tf.convert_to_tensor([1.0], dtype=tf.float32),
