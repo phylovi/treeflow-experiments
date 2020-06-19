@@ -21,15 +21,13 @@ tfd = tfp.distributions
 DATA_ROOT = "../../data/"
 NEWICK_FILE = DATA_ROOT + "wnv/wnv_seed_6.nwk"
 FASTA_FILE = DATA_ROOT + "wnv/wnv.fasta"
-FREQUENCIES = (
-    np.array(
-        [
-            0.26744051135162256,
-            0.22286688874964067,
-            0.2787013207712062,
-            0.23099127912752943,
-        ]
-    ),
+FREQUENCIES = np.array(
+    [
+        0.26744051135162256,
+        0.22286688874964067,
+        0.2787013207712062,
+        0.23099127912752943,
+    ], dtype=np.float32
 )
 KAPPA = 14.52346114599242
 
@@ -69,13 +67,12 @@ def build_q_and_log_posterior(use_libsbn):
         )
     else:
         tree, taxon_names = treeflow.tree_processing.parse_newick(NEWICK_FILE)
-        sequences, pattern_counts = treeflow.sequences.get_encoded_sequences(
+        alignment = treeflow.sequences.get_encoded_sequences(
             FASTA_FILE, taxon_names
         )
-        value = {"sequences": sequences, "weights": pattern_counts}
 
         likelihood, instance = treeflow.sequences.log_prob_conditioned_branch_only(
-            value,
+            alignment,
             topology,
             category_count=1,
             subst_model=subst_model,
