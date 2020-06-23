@@ -13,7 +13,7 @@ import numdifftools as nd
 
 tfd = tfp.distributions
 
-DATA_ROOT = "../../data/"
+DATA_ROOT = "data/"
 NEWICK_FILE = DATA_ROOT + "wnv/wnv_seed_6.nwk"
 FASTA_FILE = DATA_ROOT + "wnv/wnv.fasta"
 FREQUENCIES = np.array(
@@ -43,17 +43,23 @@ def build_likelihood_and_gradient():
         return likelihood(treeflow.sequences.get_branch_lengths(tree) * clock_rate)
 
     def strict_clock_func(log_clock_rate):
+        assert (log_clock_rate.shape == 1)
         return tfp.math.value_and_gradient(
             lambda log_clock_rate: -1. * likelihood(
                 treeflow.sequences.get_branch_lengths(tree) * tf.exp(log_clock_rate)),
             log_clock_rate)
 
-    def relaxed_clock_func(log_clock_rates):
-        return tfp.math.value_and_gradient(
-            lambda log_clock_rates: -1. *
-                      likelihood(treeflow.sequences.get_branch_lengths(tree) * tf.exp(log_clock_rates)) +
-                      0.5 * tf.reduce_sum(log_clock_rates * log_clock_rates) / RELAXED_SD / RELAXED_SD,
-            log_clock_rates)
+    def relaxed_clock_func(all_log_clock_rates):
+        branch_lengths = treeflow.sequences.get_branch_lengths(tree)
+        num_branch_lengths = branch_lengths.get_shape()[0]
+        assert (all_log_clock_rates.shape == num_branch_lengths + 1)
+
+        def function(all_log_clock_rates):
+            grand_log_rate, log_clock_rates = tf.split(all_log_clock_rates, [1, num_branch_lengths])
+            return -1. * likelihood(branch_lengths * tf.exp(grand_log_rate + log_clock_rates)) +\
+                   0.5 * tf.reduce_sum(log_clock_rates * log_clock_rates) / RELAXED_SD / RELAXED_SD
+
+        return tfp.math.value_and_gradient(function, all_log_clock_rates)
 
     return tree, strict_clock_func, relaxed_clock_func, \
            clock_likelihood_func, likelihood, instance
@@ -65,7 +71,7 @@ strict_start = tf.constant([0.1])
 strict_result = tfp.optimizer.bfgs_minimize(strict_clock, initial_position=strict_start,
                                             tolerance=1e-8)
 
-relaxed_start = tf.constant([0.0], shape=206)
+relaxed_start = tf.constant([0.0], shape=207)
 relaxed_result = tfp.optimizer.lbfgs_minimize(relaxed_clock, initial_position=relaxed_start,
                                               tolerance=1e-8, max_iterations=1000)
 
