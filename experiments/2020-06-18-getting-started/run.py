@@ -27,7 +27,7 @@ FREQUENCIES = np.array(
         0.22286688874964067,
         0.2787013207712062,
         0.23099127912752943,
-    ], dtype=np.float32
+    ], dtype=np.float64
 )
 KAPPA = 14.52346114599242
 
@@ -37,7 +37,7 @@ def build_q_and_log_posterior(use_libsbn):
     topology = treeflow.tree_processing.update_topology_dict(tree["topology"])
     taxon_count = len(taxon_names)
     sampling_times = tf.convert_to_tensor(
-        tree["heights"][:taxon_count], dtype=tf.float32
+        tree["heights"][:taxon_count], dtype=tf.float64
     )
 
     prior = tfd.JointDistributionNamed(
@@ -76,8 +76,8 @@ def build_q_and_log_posterior(use_libsbn):
             topology,
             category_count=1,
             subst_model=subst_model,
-            category_weights=tf.convert_to_tensor([1.0], dtype=tf.float32),
-            category_rates=tf.convert_to_tensor([1.0], dtype=tf.float32),
+            category_weights=tf.convert_to_tensor([1.0], dtype=tf.float64),
+            category_rates=tf.convert_to_tensor([1.0], dtype=tf.float64),
             frequencies=FREQUENCIES,
             kappa=KAPPA,
         )
