@@ -18,6 +18,12 @@ from treeflow.coalescent import ConstantCoalescent
 
 tfd = tfp.distributions
 
+import os
+
+abspath = os.path.abspath(__file__)
+dname = os.path.dirname(abspath)
+os.chdir(dname)
+
 DATA_ROOT = "../../data/"
 NEWICK_FILE = DATA_ROOT + "wnv/wnv_seed_6.nwk"
 FASTA_FILE = DATA_ROOT + "wnv/wnv.fasta"
@@ -31,7 +37,7 @@ FREQUENCIES = np.array(
 )
 KAPPA = 14.52346114599242
 
-
+cast = lambda x: tf.convert_to_tensor(x, dtype=treeflow.DEFAULT_FLOAT_DTYPE_TF)
 def build_q_and_log_posterior(use_libsbn):
     tree, taxon_names = treeflow.tree_processing.parse_newick(NEWICK_FILE)
     topology = treeflow.tree_processing.update_topology_dict(tree["topology"])
@@ -42,8 +48,8 @@ def build_q_and_log_posterior(use_libsbn):
 
     prior = tfd.JointDistributionNamed(
         dict(
-            clock_rate=tfd.LogNormal(loc=0.0, scale=3.0),
-            pop_size=tfd.LogNormal(0.0, 3.0),
+            clock_rate=tfd.LogNormal(cast(0.0), cast(3.0)),
+            pop_size=tfd.LogNormal(cast(0.0), cast(3.0)),
             tree=lambda pop_size: ConstantCoalescent(
                 taxon_count, pop_size, sampling_times
             ),
