@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 import tensorflow_probability as tfp
+import treeflow
 import treeflow.beagle
 import treeflow.substitution_model
 import treeflow.sequences
@@ -27,31 +28,39 @@ FREQUENCIES = np.array(
         0.22286688874964067,
         0.2787013207712062,
         0.23099127912752943,
-    ], dtype=np.float32
+    ],
+    dtype=np.float32,
 )
 KAPPA = 14.52346114599242
 
 
+def cast_float(x):
+    return tf.convert_to_tensor(x, dtype=treeflow.DEFAULT_FLOAT_DTYPE_TF)
+
+
 def build_q_and_log_posterior(use_libsbn):
     tree, taxon_names = treeflow.tree_processing.parse_newick(NEWICK_FILE)
-    topology = treeflow.tree_processing.update_topology_dict(tree["topology"])
+    topology = tree["topology"]
     taxon_count = len(taxon_names)
     sampling_times = tf.convert_to_tensor(
-        tree["heights"][:taxon_count], dtype=tf.float32
+        tree["heights"][:taxon_count], dtype=treeflow.DEFAULT_FLOAT_DTYPE_TF
     )
 
     prior = tfd.JointDistributionNamed(
         dict(
-            clock_rate=tfd.LogNormal(loc=0.0, scale=3.0),
-            pop_size=tfd.LogNormal(0.0, 3.0),
+            clock_rate=tfd.LogNormal(loc=cast_float(0.0), scale=cast_float(3.0)),
+            pop_size=tfd.LogNormal(loc=cast_float(0.0), scale=cast_float(3.0)),
             tree=lambda pop_size: ConstantCoalescent(
                 taxon_count, pop_size, sampling_times
             ),
         )
     )
+    prior_sample = prior.sample()
 
-    q_prior = treeflow.model.construct_prior_approximation(prior)
-    q_tree = treeflow.model.construct_tree_approximation(NEWICK_FILE)
+    q_prior, q_prior_vars = treeflow.model.construct_prior_approximation(
+        prior, prior_sample
+    )
+    q_tree, q_tree_vars = treeflow.model.construct_tree_approximation(NEWICK_FILE)
     q = tfd.JointDistributionNamed(dict(tree=q_tree, **q_prior))
     q.sample()
 
@@ -67,19 +76,17 @@ def build_q_and_log_posterior(use_libsbn):
         )
     else:
         tree, taxon_names = treeflow.tree_processing.parse_newick(NEWICK_FILE)
-        alignment = treeflow.sequences.get_encoded_sequences(
-            FASTA_FILE, taxon_names
-        )
+        alignment = treeflow.sequences.get_encoded_sequences(FASTA_FILE, taxon_names)
 
         likelihood, instance = treeflow.sequences.log_prob_conditioned_branch_only(
             alignment,
             topology,
             category_count=1,
             subst_model=subst_model,
-            category_weights=tf.convert_to_tensor([1.0], dtype=tf.float32),
-            category_rates=tf.convert_to_tensor([1.0], dtype=tf.float32),
-            frequencies=FREQUENCIES,
-            kappa=KAPPA,
+            category_weights=cast_float([1.0]),
+            category_rates=cast_float([1.0]),
+            frequencies=cast_float(FREQUENCIES),
+            kappa=cast_float(KAPPA),
         )
 
     wrapped_likelihood = lambda z: likelihood(
@@ -96,7 +103,7 @@ def build_q_and_log_posterior(use_libsbn):
 
 TRIAL_COUNT = 1
 USE_TF_PROFILER = False
-USE_LIBSBN = False
+USE_LIBSBN = True
 
 q, log_posterior = build_q_and_log_posterior(USE_LIBSBN)
 
