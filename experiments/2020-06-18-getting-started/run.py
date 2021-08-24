@@ -15,6 +15,7 @@ import treeflow.substitution_model
 import treeflow.sequences
 import treeflow.tree_processing
 import treeflow.model
+import treeflow.vi
 from treeflow.coalescent import ConstantCoalescent
 
 tfd = tfp.distributions
@@ -103,7 +104,8 @@ def build_q_and_log_posterior(use_libsbn):
 
 TRIAL_COUNT = 1
 USE_TF_PROFILER = False
-USE_LIBSBN = True
+USE_LIBSBN = False
+USE_FUNCTION_MODE = True
 
 q, log_posterior = build_q_and_log_posterior(USE_LIBSBN)
 
@@ -113,9 +115,16 @@ if USE_TF_PROFILER:
 with click.progressbar(range(TRIAL_COUNT), label="Trials") as bar:
     for _ in bar:
         q_tmp = q.copy()
-        loss = tfp.vi.fit_surrogate_posterior(
-            log_posterior, q_tmp, tf.optimizers.Adam(learning_rate=0.0001), 5
-        )
+        optimizer = tf.optimizers.Adam(learning_rate=0.0001)
+        num_steps = 5
+        if USE_FUNCTION_MODE:
+            loss = tfp.vi.fit_surrogate_posterior(
+                log_posterior, q_tmp, optimizer, num_steps
+            )
+        else:
+            loss = treeflow.vi.fit_surrogate_posterior(
+                log_posterior, q_tmp, optimizer, num_steps
+            )
 
 if USE_TF_PROFILER:
     tf.profiler.experimental.stop()
