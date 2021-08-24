@@ -28,6 +28,7 @@ FREQUENCIES = np.array(
 )
 KAPPA = 14.52346114599242
 RELAXED_SD = 1.0
+USE_FUNCTION_MODE = False
 
 
 def cast_float(x):
@@ -163,22 +164,41 @@ def st_time(func):
     return st_func
 
 
+def lbfgs_libsbn():
+    return tfp.optimizer.lbfgs_minimize(
+        relaxed_clock,
+        initial_position=relaxed_start,
+        tolerance=1e-8,
+        max_iterations=1000,
+    )
+
+
+# lbfgs_libsbn()  # Do tracing
+
+
 @st_time
 def loop_lbfgs_libsbn():
     for x in range(5):
-        tfp.optimizer.lbfgs_minimize(
-            relaxed_clock,
-            initial_position=relaxed_start,
-            tolerance=1e-8,
-            max_iterations=1000,
-        )
+        lbfgs_libsbn()
 
 
-# @st_time
-# def loop_lbfgs_tf():
-#     for x in range(5):
-#         tfp.optimizer.lbfgs_minimize(relaxed_clock2, initial_position=relaxed_start,
-#                                      tolerance=1e-8, max_iterations=1000)
+def lbfgs_tf():
+    tfp.optimizer.lbfgs_minimize(
+        relaxed_clock2,
+        initial_position=relaxed_start,
+        tolerance=1e-8,
+        max_iterations=1000,
+    )
+
+
+if USE_FUNCTION_MODE:
+    lbfgs_tf = tf.function(lbfgs_tf)
+
+
+@st_time
+def loop_lbfgs_tf():
+    for x in range(5):
+        lbfgs_tf()
 
 
 @st_time
@@ -196,5 +216,12 @@ def loop_like_tf():
 loop_lbfgs_libsbn()
 loop_like_libsbn()
 
-loop_like_tf()  # Does not return correct log_likelihood
-# loop_lbfgs_tf()
+if USE_FUNCTION_MODE:
+
+    @st_time
+    def lbfgs_tf_compile():
+        lbfgs_tf()
+
+    lbfgs_tf_compile()
+loop_like_tf()
+loop_lbfgs_tf()
