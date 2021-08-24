@@ -36,6 +36,7 @@ def cast_float(x):
 
 def build_likelihood_and_gradient(use_libsbn):
     tree, taxon_names = treeflow.tree_processing.parse_newick(NEWICK_FILE)
+    branch_lengths = treeflow.sequences.get_branch_lengths(tree)
 
     if use_libsbn:
         likelihood, instance = treeflow.beagle.log_prob_conditioned_branch_only(
@@ -60,12 +61,14 @@ def build_likelihood_and_gradient(use_libsbn):
             frequencies=FREQUENCIES,
             kappa=KAPPA,
         )
+    likelihood = tf.function(likelihood)
+    likelihood(branch_lengths)  # Call to do function mode tracing
 
-    branch_lengths = treeflow.sequences.get_branch_lengths(tree)
-
+    @tf.function
     def clock_likelihood_func(clock_rate):
         return likelihood(branch_lengths * clock_rate)
 
+    @tf.function
     def strict_clock_func(log_clock_rate):
         return tfp.math.value_and_gradient(
             lambda log_clock_rate: -1.0
@@ -73,6 +76,7 @@ def build_likelihood_and_gradient(use_libsbn):
             log_clock_rate,
         )
 
+    @tf.function
     def relaxed_clock_func(all_log_clock_rates):
         num_branch_lengths = branch_lengths.get_shape()[0]
         # assert all_log_clock_rates.shape == num_branch_lengths + 1
