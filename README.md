@@ -1,5 +1,7 @@
 ## treeflow-experiments
 
+Depends on [`treeflow v0.0.1-alpha`](https://github.com/christiaanjs/treeflow/releases/tag/v0.0.1-alpha)
+
 ## Installing perf:
 
 Debian:
